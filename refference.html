@@ -1,0 +1,2115 @@
+<!DOCTYPE html>
+<!-- saved from url=(0059)file:///C:/Users/Rian%20Abbott/Desktop/BTC%20DASHBOARD.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Liquidity Dashboard</title>
+    <script src="./Binance BTCUSDT FUTURES  Dashboard_files/plotly-latest.min.js.download"></script><style id="plotly.js-style-global"></style>
+    <script src="./Binance BTCUSDT FUTURES  Dashboard_files/tf.min.js.download"></script>
+    <script src="./Binance BTCUSDT FUTURES  Dashboard_files/luxon@2.0.2"></script>
+    <style>
+        :root {
+            --dark-bg: #0a0a1a;
+            --panel-bg: rgba(0, 0, 0, 0.3);
+            --text-main: #a0e0ff;
+            --text-secondary: #ff8c00;
+            --positive: #39FF14;
+            --negative: #FF3131;
+            --warning: #ffff00;
+            --highlight-blue: rgba(0, 150, 255, 0.2);
+            --highlight-purple: rgba(128, 0, 128, 0.3);
+            --highlight-ask: rgba(0, 255, 0, 0.3);
+            --highlight-bid: rgba(255, 0, 0, 0.3);
+            --highlight-neon-green: rgba(57, 255, 20, 0.3);
+            --accent-blue: #00F5FF;
+            --neon-red: #FF3131;
+            --accent-orange: #E58C23;
+            --grid-line: rgba(160, 224, 255, 0.15);
+            --flash-bg: rgba(255, 255, 255, 0.7);
+            --gold-alert: rgba(255, 215, 0, 0.5);
+            --light-blue-alert: rgba(173, 216, 230, 0.5);
+            --silver-text: #C0C0C0;
+        }
+
+        body {
+            background: var(--dark-bg);
+            color: var(--text-main);
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 10px;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 8px;
+            border: 1px solid var(--grid-line);
+            padding: 15px;
+            position: absolute;
+            resize: both;
+            overflow: auto;
+            min-width: 300px;
+            min-height: 200px;
+        }
+
+        .panel-header {
+            cursor: move;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--grid-line);
+            margin-bottom: 10px;
+            color: var(--text-main);
+            font-weight: bold;
+            font-size: 18px;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--panel-bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, 
+                #FF3131, #FF9131, #FFD131, #39FF14, #00F5FF, #BF40BF);
+            border-radius: 6px;
+        }
+
+        .tape {
+            height: calc(100% - 40px);
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .tape-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .buy-row {
+            background-color: var(--highlight-blue);
+            color: var(--accent-blue);
+        }
+
+        .sell-row {
+            background-color: var(--highlight-bid);
+            color: var(--neon-red);
+        }
+
+        .above-ask {
+            background-color: rgba(0, 100, 255, 0.3);
+        }
+
+        .below-bid {
+            background-color: rgba(70, 70, 100, 0.3);
+        }
+
+        .info-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 16px;
+            color: var(--text-main);
+        }
+
+        .info-sublabel {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .positive-value {
+            color: var(--positive);
+        }
+
+        .negative-value {
+            color: var(--negative);
+        }
+
+        .warning-value {
+            color: var(--warning);
+        }
+
+        .info-value-small {
+            font-size: 14px;
+        }
+
+        .silver-text {
+            color: var(--silver-text);
+        }
+
+        .slippage-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .bid-slippage {
+            color: var(--negative);
+            text-shadow: 0 0 5px rgba(255, 49, 49, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        .ask-slippage {
+            color: var(--positive);
+            text-shadow: 0 0 5px rgba(57, 255, 20, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .price-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .price-box {
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--grid-line);
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-align: center;
+            margin: 0;
+        }
+
+        .filter-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .filter-label {
+            font-size: 11px;
+        }
+
+        .filter-input {
+            width: 60px;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-main);
+            border: 1px solid var(--grid-line);
+            border-radius: 3px;
+            padding: 3px;
+        }
+
+        .filter-select {
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-main);
+            border: 1px solid var(--grid-line);
+            border-radius: 3px;
+            padding: 3px;
+        }
+
+        .dpeg-tape .tape-row {
+            font-family: monospace;
+            padding: 3px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .large-buy-row {
+            background-color: rgba(0, 255, 0, 0.3);
+            color: #39FF14;
+        }
+
+        .large-sell-row {
+            background-color: rgba(255, 0, 0, 0.3);
+            color: #FF3131;
+        }
+
+        .gold-alert {
+            background-color: var(--gold-alert) !important;
+        }
+
+        .light-blue-alert {
+            background-color: var(--light-blue-alert) !important;
+        }
+
+        .purple-alert {
+            background-color: var(--highlight-purple) !important;
+        }
+        
+        .neon-green-alert {
+            background-color: var(--highlight-neon-green) !important;
+        }
+        
+        .market-update-board {
+            grid-column: 1 / span 2;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--grid-line);
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 10px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--accent-blue);
+            bottom: 0;
+            right: 0;
+            cursor: nwse-resize;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Info Panel -->
+        <div class="panel" id="info-panel" style="top: 374px; left: 413px; width: 361px; height: 579px;">
+            <div class="panel-header">
+                <span>Market Information</span>
+                <div class="price-box">
+                    <span class="info-value"><span id="last-price-display" class="negative-value">102543.65</span></span>
+                </div>
+            </div>
+            <div class="info-container" id="market-info">
+                <div class="market-update-board" id="market-updates">Large sell wall detected at 96500</div>
+                <div class="info-item">
+                    <div class="bid-slippage" id="bid-slippage">Selling: 0.00%</div>
+                </div>
+                <div class="info-item">
+                    <div class="ask-slippage" id="ask-slippage">Buying: 0.00%</div>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">15m Sells</span>
+                    <span class="info-value"><span class="negative-value" id="sells-15m">212.1610</span></span>
+                    <span class="info-sublabel"><span class="negative-value" id="sells-15m-usd">$21,774,594.85</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">15m Buys</span>
+                    <span class="info-value"><span class="positive-value" id="buys-15m">97.8263</span></span>
+                    <span class="info-sublabel"><span class="positive-value" id="buys-15m-usd">$10,036,684.66</span></span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">DPeg CVD</span>
+                    <span class="info-value"><span class="positive-value" id="dpeg-cvd">0.00000</span></span>
+                    <span class="info-sublabel"><span class="positive-value" id="dpeg-cvd-usd">$0.00</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">POC</span>
+                    <span class="info-value"><span class="info-value-small" id="poc">$49650.00</span></span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">VAL</span>
+                    <span class="info-value"><span class="info-value-small" id="val">$49500.00</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">VAH</span>
+                    <span class="info-value"><span class="info-value-small" id="vah">$50250.00</span></span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">CVD (4H)</span>
+                    <span class="info-value"><span class="negative-value" id="cvd-4h">$2,904,375.08</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CVD (15m)</span>
+                    <span class="info-value"><span class="negative-value" id="cvd-15m">$(11,737,910.19)</span></span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">Intraday VWAP</span>
+                    <span class="info-value"><span class="warning-value" id="intraday-vwap">$50000.00</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Daily VWAP</span>
+                    <span class="info-value"><span class="warning-value" id="daily-vwap">$49900.00</span></span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">4H Bar Close</span>
+                    <span class="info-value" id="bar-close-4h">108:36</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">15m Bar Close</span>
+                    <span class="info-value" id="bar-close-15m">03:36</span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">UTC-5</span>
+                    <span class="info-value" id="utc-time">7:21:28 PM</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Next Analysis</span>
+                    <span class="info-value" id="next-analysis">03:36</span>
+                </div>
+            </div>
+        <div class="resize-handle"></div></div>
+
+        <!-- Time & Sales Tape -->
+        <div class="panel" id="trades-panel" style="top: -4px; left: 1487px; width: 407px; height: 945px;">
+            <div class="panel-header">Time &amp; Sales</div>
+            <div class="tape" id="trades-tape"><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102543.65</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102543.91</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0029</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.24</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.31</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0019</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.31</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0010</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.48</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.95</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.98</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.99</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.99</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0007</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.99</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0007</span>
+                    <span>7:19:27 PM</span>
+                    <span>102544.99</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.28</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.35</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.37</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.37</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.39</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0004</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0002</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0004</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0004</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0049</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0244</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0001</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div><div class="tape-row sell-row">
+                    <span>0.0002</span>
+                    <span>7:19:27 PM</span>
+                    <span>102545.40</span>
+                    <span>SELL</span>
+                </div></div>
+        <div class="resize-handle"></div></div>
+
+        <!-- Aggregated Trades Tape -->
+        <div class="panel" id="agg-trades-panel" style="top: 200px; left: 800px; width: 400px; height: 400px;">
+            <div class="panel-header">Aggregated Trades</div>
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <span class="filter-label">Volume Min:</span>
+                    <input type="number" id="agg-min" min="0" max="10000" value="0" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Volume Max:</span>
+                    <input type="number" id="agg-max" min="0" max="10000" value="10000" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Alert 1:</span>
+                    <select id="agg-alert-type1" class="filter-select">
+                        <option value="none">None</option>
+                        <option value="bid">Bid</option>
+                        <option value="ask">Ask</option>
+                        <option value="volume">Volume</option>
+                    </select>
+                    <input type="number" id="agg-alert-min1" min="0" max="10000" value="0" class="filter-input">
+                    <input type="number" id="agg-alert-max1" min="0" max="10000" value="10000" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Alert 2:</span>
+                    <select id="agg-alert-type2" class="filter-select">
+                        <option value="none">None</option>
+                        <option value="bid">Bid</option>
+                        <option value="ask">Ask</option>
+                        <option value="volume">Volume</option>
+                    </select>
+                    <input type="number" id="agg-alert-min2" min="0" max="10000" value="0" class="filter-input">
+                    <input type="number" id="agg-alert-max2" min="0" max="10000" value="10000" class="filter-input">
+                </div>
+            </div>
+            <div class="tape" id="agg-trades-tape"><div class="tape-row sell-row">
+                        <span>0.0095</span>
+                        <span>7:20:58 PM</span>
+                        <span>102519.99</span>
+                        <span>SELL</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:57 PM</span>
+                        <span>102520.00</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:57 PM</span>
+                        <span>102520.00</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0003</span>
+                        <span>7:20:54 PM</span>
+                        <span>102520.00</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row sell-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102519.99</span>
+                        <span>SELL</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102520.00</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0488</span>
+                        <span>7:20:54 PM</span>
+                        <span>102520.00</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0002</span>
+                        <span>7:20:54 PM</span>
+                        <span>102519.15</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0268</span>
+                        <span>7:20:54 PM</span>
+                        <span>102519.15</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0004</span>
+                        <span>7:20:54 PM</span>
+                        <span>102519.14</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0012</span>
+                        <span>7:20:54 PM</span>
+                        <span>102518.32</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0003</span>
+                        <span>7:20:54 PM</span>
+                        <span>102517.99</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102517.26</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0031</span>
+                        <span>7:20:54 PM</span>
+                        <span>102516.63</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0002</span>
+                        <span>7:20:54 PM</span>
+                        <span>102516.33</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0004</span>
+                        <span>7:20:54 PM</span>
+                        <span>102516.32</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102516.24</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0002</span>
+                        <span>7:20:54 PM</span>
+                        <span>102516.00</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0004</span>
+                        <span>7:20:54 PM</span>
+                        <span>102515.99</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0002</span>
+                        <span>7:20:54 PM</span>
+                        <span>102515.75</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102515.22</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0004</span>
+                        <span>7:20:54 PM</span>
+                        <span>102515.15</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0063</span>
+                        <span>7:20:54 PM</span>
+                        <span>102515.14</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102512.14</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0004</span>
+                        <span>7:20:54 PM</span>
+                        <span>102512.07</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102511.12</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0029</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.84</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0019</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.72</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0010</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.42</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0003</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.19</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.18</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.17</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.09</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.06</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.03</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0025</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.02</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.1815</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0133</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.1319</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0097</span>
+                        <span>7:20:54 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row sell-row">
+                        <span>0.0214</span>
+                        <span>7:20:53 PM</span>
+                        <span>102510.00</span>
+                        <span>SELL</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:53 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row sell-row">
+                        <span>0.0195</span>
+                        <span>7:20:53 PM</span>
+                        <span>102510.00</span>
+                        <span>SELL</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0008</span>
+                        <span>7:20:53 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row sell-row">
+                        <span>0.0003</span>
+                        <span>7:20:52 PM</span>
+                        <span>102510.00</span>
+                        <span>SELL</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0007</span>
+                        <span>7:20:52 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:51 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0001</span>
+                        <span>7:20:50 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>0.0003</span>
+                        <span>7:20:49 PM</span>
+                        <span>102510.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row sell-row">
+                        <span>0.0001</span>
+                        <span>7:20:49 PM</span>
+                        <span>102510.00</span>
+                        <span>SELL</span>
+                    </div></div>
+        <div class="resize-handle"></div></div>
+
+        <!-- Cumulative Tape -->
+        <div class="panel" id="cumulative-panel" style="top: 9px; left: 863px; width: 614px; height: 906px;">
+            <div class="panel-header">Cumulative Trades</div>
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <span class="filter-label">Alert On:</span>
+                    <select id="cumulative-alert-type1" class="filter-select">
+                        <option value="none">None</option>
+                        <option value="bid">Bid</option>
+                        <option value="ask">Ask</option>
+                        <option value="volume">Volume</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Min Size:</span>
+                    <input type="number" id="cumulative-min1" min="0" max="100000" value="5" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Max Size:</span>
+                    <input type="number" id="cumulative-max1" min="0" max="100000" value="100000" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Alert On:</span>
+                    <select id="cumulative-alert-type2" class="filter-select">
+                        <option value="none">None</option>
+                        <option value="bid">Bid</option>
+                        <option value="ask">Ask</option>
+                        <option value="volume">Volume</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Min Size:</span>
+                    <input type="number" id="cumulative-min2" min="0" max="100000" value="10" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Max Size:</span>
+                    <input type="number" id="cumulative-max2" min="0" max="100000" value="50000" class="filter-input">
+                </div>
+            </div>
+            <div class="tape" id="cumulative-tape"><div class="tape-row buy-row">
+                        <span>6.4938</span>
+                        <span>6:29:45 PM</span>
+                        <span>103090.01</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>6.9113</span>
+                        <span>6:29:12 PM</span>
+                        <span>103080.10</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>6.7988</span>
+                        <span>6:20:06 PM</span>
+                        <span>103000.00</span>
+                        <span>BUY</span>
+                    </div><div class="tape-row buy-row">
+                        <span>5.6563</span>
+                        <span>5:32:52 PM</span>
+                        <span>102798.51</span>
+                        <span>BUY</span>
+                    </div></div>
+        <div class="resize-handle"></div></div>
+
+        <!-- Market Orders Tape -->
+        <div class="panel" id="market-orders-panel" style="top: 6px; left: 400px; width: 427px; height: 924px;">
+            <div class="panel-header">Market Orders</div>
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <span class="filter-label">Alert On:</span>
+                    <select id="market-alert-type1" class="filter-select">
+                        <option value="none">None</option>
+                        <option value="bid">Bid</option>
+                        <option value="ask">Ask</option>
+                        <option value="volume">Volume</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Min Size:</span>
+                    <input type="number" id="market-min1" min="0" max="100000" value="1" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Max Size:</span>
+                    <input type="number" id="market-max1" min="0" max="100000" value="100000" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Alert On:</span>
+                    <select id="market-alert-type2" class="filter-select">
+                        <option value="none">None</option>
+                        <option value="bid">Bid</option>
+                        <option value="ask">Ask</option>
+                        <option value="volume">Volume</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Min Size:</span>
+                    <input type="number" id="market-min2" min="0" max="100000" value="5" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Max Size:</span>
+                    <input type="number" id="market-max2" min="0" max="100000" value="50000" class="filter-input">
+                </div>
+            </div>
+            <div class="tape" id="market-orders-tape"></div>
+        <div class="resize-handle"></div></div>
+
+        <!-- DPeg Analysis -->
+        <div class="panel dpeg-tape" id="dpeg-panel" style="top: 421px; left: 4px; width: 339px; height: 513px;">
+            <div class="panel-header">DPeg Analysis</div>
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <span class="filter-label">Buy Threshold:</span>
+                    <input type="number" id="dpeg-buy-thresh" step="0.00001" value="0.00006" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Sell Threshold:</span>
+                    <input type="number" id="dpeg-sell-thresh" step="0.00001" value="0.00008" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Slippage Ticks:</span>
+                    <input type="number" id="dpeg-slippage" min="0" max="20000" value="1000" class="filter-input">
+                </div>
+                <button id="start-dpeg" style="background: rgba(0,0,0,0.3); color: var(--text-main); border: 1px solid var(--grid-line); border-radius: 3px; padding: 3px 6px;">Start CVD</button>
+                <button id="reset-dpeg" style="background: rgba(0,0,0,0.3); color: var(--text-main); border: 1px solid var(--grid-line); border-radius: 3px; padding: 3px 6px;">Reset CVD</button>
+            </div>
+            <div class="tape" id="dpeg-tape"></div>
+        <div class="resize-handle"></div></div>
+
+        <!-- Large Orders Tape -->
+        <div class="panel" id="large-orders-panel" style="top: 658px; left: 866px; width: 551px; height: 275px;">
+            <div class="panel-header">Large Orders (≥5 BTC)</div>
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <span class="filter-label">Volume Alert 1:</span>
+                    <input type="number" id="large-volume-alert1" min="0" max="100000" value="0" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Volume Alert 2:</span>
+                    <input type="number" id="large-volume-alert2" min="0" max="100000" value="0" class="filter-input">
+                </div>
+            </div>
+            <div class="tape" id="large-orders-tape"></div>
+        <div class="resize-handle"></div></div>
+    </div>
+
+    <script>
+        // Global State
+        const state = {
+            lastPrice: 0,
+            lastTradeWasBuy: false,
+            orderBook: { bids: [], asks: [] },
+            trades: [],
+            aggTrades: [],
+            cumulativeTrades: [],
+            marketOrders: [],
+            largeOrders: [],
+            dpegOrders: [],
+            dpegAnalysis: {
+                active: false,
+                buyCount: 0,
+                sellCount: 0,
+                maxBuySlippage: 0,
+                maxSellSlippage: 0,
+                lastAnalysisTime: 0
+            },
+            vwap: {
+                intraday: { price: 0, poc: 0, val: 0, vah: 0 },
+                daily: { price: 0, poc: 0, val: 0, vah: 0 }
+            },
+            volume: {
+                buys15m: { btc: 0, usd: 0 },
+                sells15m: { btc: 0, usd: 0 },
+                cvd15m: 0,
+                cvd4h: 0,
+                dpegCvd: { btc: 0, usd: 0, delta: 0 }
+            },
+            timers: {
+                nextAnalysis: 300,
+                barClose15m: 900,
+                barClose4h: 14400
+            },
+            volatility: 0,
+            ws: null,
+            aggWs: null,
+            obWs: null,
+            lastUpdate: null,
+            slippage: { bid: 0, ask: 0 },
+            marketUpdates: [
+                "Market trending upward with strong buying pressure",
+                "Large sell wall detected at 96500",
+                "Increased volatility expected during US market open",
+                "CVD showing sustained buying pressure",
+                "DPeg activity increasing - potential reversal signal"
+            ]
+        };
+
+        // Initialize Dashboard
+        function initDashboard() {
+            makePanelsDraggable();
+            setupWebSockets();
+            updateInfoPanel();
+            startTimers();
+            
+            // Set up event listeners
+            document.getElementById('reset-dpeg').addEventListener('click', resetDpegCvd);
+            document.getElementById('start-dpeg').addEventListener('click', startDpegAnalysis);
+            
+            // Aggregated trades filters
+            document.getElementById('agg-min').addEventListener('input', updateAggTradesTape);
+            document.getElementById('agg-max').addEventListener('input', updateAggTradesTape);
+            document.getElementById('agg-alert-type1').addEventListener('change', updateAggTradesTape);
+            document.getElementById('agg-alert-min1').addEventListener('input', updateAggTradesTape);
+            document.getElementById('agg-alert-max1').addEventListener('input', updateAggTradesTape);
+            document.getElementById('agg-alert-type2').addEventListener('change', updateAggTradesTape);
+            document.getElementById('agg-alert-min2').addEventListener('input', updateAggTradesTape);
+            document.getElementById('agg-alert-max2').addEventListener('input', updateAggTradesTape);
+            
+            // Cumulative trades filters
+            document.getElementById('cumulative-alert-type1').addEventListener('change', updateCumulativeTape);
+            document.getElementById('cumulative-min1').addEventListener('input', updateCumulativeTape);
+            document.getElementById('cumulative-max1').addEventListener('input', updateCumulativeTape);
+            document.getElementById('cumulative-alert-type2').addEventListener('change', updateCumulativeTape);
+            document.getElementById('cumulative-min2').addEventListener('input', updateCumulativeTape);
+            document.getElementById('cumulative-max2').addEventListener('input', updateCumulativeTape);
+            
+            // Market orders filters
+            document.getElementById('market-alert-type1').addEventListener('change', updateMarketOrdersTape);
+            document.getElementById('market-min1').addEventListener('input', updateMarketOrdersTape);
+            document.getElementById('market-max1').addEventListener('input', updateMarketOrdersTape);
+            document.getElementById('market-alert-type2').addEventListener('change', updateMarketOrdersTape);
+            document.getElementById('market-min2').addEventListener('input', updateMarketOrdersTape);
+            document.getElementById('market-max2').addEventListener('input', updateMarketOrdersTape);
+            
+            // DPeg threshold changes
+            document.getElementById('dpeg-buy-thresh').addEventListener('input', () => {
+                if (state.dpegAnalysis.active) {
+                    updateDpegTape();
+                }
+            });
+            document.getElementById('dpeg-sell-thresh').addEventListener('input', () => {
+                if (state.dpegAnalysis.active) {
+                    updateDpegTape();
+                }
+            });
+            
+            // Load initial data
+            fetchInitialData();
+            
+            // Rotate market updates
+            setInterval(rotateMarketUpdates, 10000);
+        }
+
+        // Make panels draggable and resizable
+        function makePanelsDraggable() {
+            const panels = document.querySelectorAll('.panel');
+            panels.forEach(panel => {
+                const header = panel.querySelector('.panel-header');
+                
+                // Add resize handle
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                panel.appendChild(resizeHandle);
+                
+                // Make panel draggable
+                header.addEventListener('mousedown', startDrag);
+                
+                // Make panel resizable
+                resizeHandle.addEventListener('mousedown', startResize);
+                
+                function startDrag(e) {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON') {
+                        return;
+                    }
+                    
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const startLeft = parseInt(window.getComputedStyle(panel).left, 10);
+                    const startTop = parseInt(window.getComputedStyle(panel).top, 10);
+                    
+                    function movePanel(e) {
+                        panel.style.left = (startLeft + e.clientX - startX) + 'px';
+                        panel.style.top = (startTop + e.clientY - startY) + 'px';
+                    }
+                    
+                    function stopDrag() {
+                        document.removeEventListener('mousemove', movePanel);
+                        document.removeEventListener('mouseup', stopDrag);
+                    }
+                    
+                    document.addEventListener('mousemove', movePanel);
+                    document.addEventListener('mouseup', stopDrag);
+                }
+                
+                function startResize(e) {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const startWidth = parseInt(document.defaultView.getComputedStyle(panel).width, 10);
+                    const startHeight = parseInt(document.defaultView.getComputedStyle(panel).height, 10);
+                    
+                    function resizePanel(e) {
+                        panel.style.width = (startWidth + e.clientX - startX) + 'px';
+                        panel.style.height = (startHeight + e.clientY - startY) + 'px';
+                    }
+                    
+                    function stopResize() {
+                        document.removeEventListener('mousemove', resizePanel);
+                        document.removeEventListener('mouseup', stopResize);
+                    }
+                    
+                    document.addEventListener('mousemove', resizePanel);
+                    document.addEventListener('mouseup', stopResize);
+                }
+            });
+        }
+
+        // WebSocket Connections
+        function setupWebSockets() {
+            // Trade stream (raw trades) - used for Time & Sales, Market Orders, DPeg Analysis
+            state.ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+            
+            state.ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // First handle ping/pong to keep connection alive
+                    if (data.ping) {
+                        state.ws.send(JSON.stringify({ pong: data.ping }));
+                        return;
+                    }
+                    
+                    // Then process trade data if it's a trade event
+                    if (data.e === 'trade') {
+                        // Send raw data to time & sales immediately
+                        sendToTapes(data);
+                        
+                        // Process for DPeg analysis if active
+                        if (state.dpegAnalysis.active) {
+                            processDPegTrade(data);
+                        }
+                        
+                        // Then process for market info and other tapes
+                        processTrade(data);
+                    }
+                } catch (e) {
+                    console.error('Error processing WebSocket message:', e);
+                }
+            };
+            
+            // Aggregated trade stream - used only for Aggregated Trades panel
+            state.aggWs = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@aggTrade');
+            
+            state.aggWs.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Handle ping/pong for aggTrade stream
+                    if (data.ping) {
+                        state.aggWs.send(JSON.stringify({ pong: data.ping }));
+                        return;
+                    }
+                    
+                    if (data.e === 'aggTrade') {
+                        processAggTrade(data);
+                    }
+                } catch (e) {
+                    console.error('Error processing aggTrade message:', e);
+                }
+            };
+            
+            // Order book stream for slippage calculations
+            state.obWs = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@depth@100ms');
+            state.obWs.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Handle ping/pong for order book stream
+                    if (data.ping) {
+                        state.obWs.send(JSON.stringify({ pong: data.ping }));
+                        return;
+                    }
+                    
+                    updateOrderBook(data);
+                } catch (e) {
+                    console.error('Error processing order book message:', e);
+                }
+            };
+            
+            // Set up error handlers
+            state.ws.onerror = (error) => {
+                console.error('Trade WebSocket error:', error);
+                setTimeout(setupWebSockets, 5000); // Reconnect after 5 seconds
+            };
+            
+            state.aggWs.onerror = (error) => {
+                console.error('AggTrade WebSocket error:', error);
+                setTimeout(setupWebSockets, 5000); // Reconnect after 5 seconds
+            };
+            
+            state.obWs.onerror = (error) => {
+                console.error('Order book WebSocket error:', error);
+                setTimeout(setupWebSockets, 5000); // Reconnect after 5 seconds
+            };
+            
+            // Set up close handlers
+            state.ws.onclose = () => {
+                console.log('Trade WebSocket closed');
+                setTimeout(setupWebSockets, 5000); // Reconnect after 5 seconds
+            };
+            
+            state.aggWs.onclose = () => {
+                console.log('AggTrade WebSocket closed');
+                setTimeout(setupWebSockets, 5000); // Reconnect after 5 seconds
+            };
+            
+            state.obWs.onclose = () => {
+                console.log('Order book WebSocket closed');
+                setTimeout(setupWebSockets, 5000); // Reconnect after 5 seconds
+            };
+        }
+
+        // Update order book
+        function updateOrderBook(data) {
+            // Process bids (b or bids)
+            const bids = data.b || data.bids || [];
+            bids.forEach(bid => {
+                const price = parseFloat(bid[0]);
+                const amount = parseFloat(bid[1]);
+                
+                if (amount === 0) {
+                    state.orderBook.bids = state.orderBook.bids.filter(b => b.price !== price);
+                } else {
+                    const existing = state.orderBook.bids.find(b => b.price === price);
+                    if (existing) {
+                        existing.amount = amount;
+                    } else {
+                        state.orderBook.bids.push({ price, amount });
+                    }
+                }
+            });
+            
+            // Process asks (a or asks)
+            const asks = data.a || data.asks || [];
+            asks.forEach(ask => {
+                const price = parseFloat(ask[0]);
+                const amount = parseFloat(ask[1]);
+                
+                if (amount === 0) {
+                    state.orderBook.asks = state.orderBook.asks.filter(a => a.price !== price);
+                } else {
+                    const existing = state.orderBook.asks.find(a => a.price === price);
+                    if (existing) {
+                        existing.amount = amount;
+                    } else {
+                        state.orderBook.asks.push({ price, amount });
+                    }
+                }
+            });
+            
+            // Sort order book
+            state.orderBook.bids.sort((a, b) => b.price - a.price);
+            state.orderBook.asks.sort((a, b) => a.price - b.price);
+            
+            // Update slippage indicators
+            updateSlippageIndicators();
+        }
+
+        // Send raw trade data to time & sales immediately
+        function sendToTapes(trade) {
+            const price = parseFloat(trade.p);
+            const size = parseFloat(trade.q);
+            const isBuy = !trade.m;
+            const time = new Date(trade.T);
+            const value = price * size;
+            
+            const tradeObj = { price, size, isBuy, time, value };
+            
+            // Add to trades (Time & Sales)
+            state.trades.unshift(tradeObj);
+            if (state.trades.length > 200) state.trades.pop();
+            
+            // Update tape immediately
+            updateTradesTape();
+        }
+
+        // Process DPeg trade immediately after pong
+        function processDPegTrade(trade) {
+            const price = parseFloat(trade.p);
+            const size = parseFloat(trade.q);
+            const isBuy = !trade.m;
+            const time = new Date(trade.T);
+            const value = price * size;
+            
+            // Check if DPeg order
+            if (isDPegOrder(size)) {
+                // Calculate slippage
+                const slippage = calculateSlippage(isBuy, price);
+                
+                const dpegTradeObj = { price, size, isBuy, time, value, slippage };
+                state.dpegOrders.unshift(dpegTradeObj);
+                if (state.dpegOrders.length > 75) state.dpegOrders.pop();
+                
+                // Update DPeg analysis
+                if (isBuy) {
+                    state.dpegAnalysis.buyCount++;
+                    if (slippage > state.dpegAnalysis.maxBuySlippage) {
+                        state.dpegAnalysis.maxBuySlippage = slippage;
+                    }
+                } else {
+                    state.dpegAnalysis.sellCount++;
+                    if (slippage > state.dpegAnalysis.maxSellSlippage) {
+                        state.dpegAnalysis.maxSellSlippage = slippage;
+                    }
+                }
+                
+                updateDpegTape();
+                updateDpegCvd(dpegTradeObj);
+            }
+        }
+
+        // Process incoming trade for market information
+        function processTrade(trade) {
+            const price = parseFloat(trade.p);
+            const size = parseFloat(trade.q);
+            const isBuy = !trade.m;
+            const time = new Date(trade.T);
+            const value = price * size;
+            
+            // Update last price
+            state.lastPrice = price;
+            state.lastTradeWasBuy = isBuy;
+            document.getElementById('last-price-display').className = isBuy ? 'positive-value' : 'negative-value';
+            document.getElementById('last-price-display').textContent = price.toFixed(2);
+            
+            // Check if large order (≥5 BTC)
+            if (size >= 5) {
+                const tradeObj = { price, size, isBuy, time, value };
+                state.largeOrders.unshift(tradeObj);
+                if (state.largeOrders.length > 50) state.largeOrders.pop();
+                updateLargeOrdersTape();
+            }
+            
+            // Check if market order (heuristic)
+            if (isMarketOrder(trade)) {
+                const tradeObj = { price, size, isBuy, time, value };
+                state.marketOrders.unshift(tradeObj);
+                if (state.marketOrders.length > 100) state.marketOrders.pop();
+                updateMarketOrdersTape();
+            }
+            
+            // Add to cumulative trades (persistent)
+            const cumulativeTradeObj = { price, size, isBuy, time, value };
+            state.cumulativeTrades.unshift(cumulativeTradeObj);
+            updateCumulativeTape();
+            
+            // Update volume metrics
+            updateVolumeMetrics({ price, size, isBuy, time, value });
+            
+            // Update UI
+            updateInfoPanel();
+        }
+
+        // Calculate slippage
+        function calculateSlippage(isBuy, price) {
+            if (state.orderBook.bids.length === 0 || state.orderBook.asks.length === 0) return 0;
+            
+            const referencePrice = isBuy ? state.orderBook.asks[0].price : state.orderBook.bids[0].price;
+            const slippage = ((price - referencePrice) / referencePrice) * 100;
+            
+            if (isBuy) {
+                state.slippage.ask = slippage;
+            } else {
+                state.slippage.bid = slippage;
+            }
+            
+            return slippage;
+        }
+
+        // Process aggregated trade (only used for Aggregated Trades panel)
+        function processAggTrade(aggTrade) {
+            const price = parseFloat(aggTrade.p);
+            const size = parseFloat(aggTrade.q);
+            const isBuy = !aggTrade.m;
+            const time = new Date(aggTrade.T);
+            const value = price * size;
+            
+            const tradeObj = { price, size, isBuy, time, value };
+            state.aggTrades.unshift(tradeObj);
+            if (state.aggTrades.length > 200) state.aggTrades.pop();
+            
+            // Also add to cumulative trades
+            state.cumulativeTrades.unshift(tradeObj);
+            
+            updateAggTradesTape();
+            updateCumulativeTape();
+        }
+
+        // Check if order is market order
+        function isMarketOrder(trade) {
+            if (state.orderBook.bids.length === 0 || state.orderBook.asks.length === 0) return false;
+            
+            if (trade.m === true) { // Buyer is market maker (sell order)
+                return parseFloat(trade.p) <= state.orderBook.bids[0].price;
+            } else { // Seller is market maker (buy order)
+                return parseFloat(trade.p) >= state.orderBook.asks[0].price;
+            }
+        }
+
+        // Check if order is DPeg
+        function isDPegOrder(size) {
+            const buyThresh = parseFloat(document.getElementById('dpeg-buy-thresh').value) || 0.00006;
+            const sellThresh = parseFloat(document.getElementById('dpeg-sell-thresh').value) || 0.00008;
+            return size >= buyThresh && size <= sellThresh;
+        }
+
+        // Update all tape displays
+        function updateTapes() {
+            updateTradesTape();
+            updateCumulativeTape();
+        }
+
+        // Update trades tape (Time & Sales)
+        function updateTradesTape() {
+            const tape = document.getElementById('trades-tape');
+            tape.innerHTML = '';
+            
+            state.trades.slice(0, 50).forEach(trade => {
+                const row = document.createElement('div');
+                row.className = `tape-row ${trade.isBuy ? 'buy-row' : 'sell-row'}`;
+                
+                row.innerHTML = `
+                    <span>${trade.size.toFixed(4)}</span>
+                    <span>${trade.time.toLocaleTimeString()}</span>
+                    <span>${trade.price.toFixed(2)}</span>
+                    <span>${trade.isBuy ? 'BUY' : 'SELL'}</span>
+                `;
+                
+                tape.appendChild(row);
+            });
+        }
+
+        // Update aggregated trades tape
+        function updateAggTradesTape() {
+            const tape = document.getElementById('agg-trades-tape');
+            const minSize = parseFloat(document.getElementById('agg-min').value);
+            const maxSize = parseFloat(document.getElementById('agg-max').value);
+            
+            // Get alert filters
+            const alert1 = {
+                type: document.getElementById('agg-alert-type1').value,
+                min: parseFloat(document.getElementById('agg-alert-min1').value),
+                max: parseFloat(document.getElementById('agg-alert-max1').value)
+            };
+            
+            const alert2 = {
+                type: document.getElementById('agg-alert-type2').value,
+                min: parseFloat(document.getElementById('agg-alert-min2').value),
+                max: parseFloat(document.getElementById('agg-alert-max2').value)
+            };
+            
+            tape.innerHTML = '';
+            
+            state.aggTrades
+                .filter(t => t.size >= minSize && t.size <= maxSize)
+                .slice(0, 50)
+                .forEach(trade => {
+                    const row = document.createElement('div');
+                    row.className = `tape-row ${trade.isBuy ? 'buy-row' : 'sell-row'}`;
+                    
+                    // Check alerts
+                    const alertClasses = [];
+                    
+                    if (alert1.type !== 'none' && trade.size >= alert1.min && trade.size <= alert1.max) {
+                        if ((alert1.type === 'bid' && !trade.isBuy) || 
+                            (alert1.type === 'ask' && trade.isBuy) || 
+                            (alert1.type === 'volume')) {
+                            alertClasses.push(
+                                alert1.type === 'bid' ? 'highlight-bid' : 
+                                alert1.type === 'ask' ? 'highlight-ask' : 'neon-green-alert'
+                            );
+                        }
+                    }
+                    
+                    if (alert2.type !== 'none' && trade.size >= alert2.min && trade.size <= alert2.max) {
+                        if ((alert2.type === 'bid' && !trade.isBuy) || 
+                            (alert2.type === 'ask' && trade.isBuy) || 
+                            (alert2.type === 'volume')) {
+                            alertClasses.push(
+                                alert2.type === 'bid' ? 'highlight-bid' : 
+                                alert2.type === 'ask' ? 'highlight-ask' : 'neon-green-alert'
+                            );
+                        }
+                    }
+                    
+                    if (alertClasses.length > 0) {
+                        row.classList.add(...alertClasses);
+                    }
+                    
+                    row.innerHTML = `
+                        <span>${trade.size.toFixed(4)}</span>
+                        <span>${trade.time.toLocaleTimeString()}</span>
+                        <span>${trade.price.toFixed(2)}</span>
+                        <span>${trade.isBuy ? 'BUY' : 'SELL'}</span>
+                    `;
+                    
+                    tape.appendChild(row);
+                });
+        }
+
+        // Update cumulative tape
+        function updateCumulativeTape() {
+            const tape = document.getElementById('cumulative-tape');
+            const minSize1 = parseFloat(document.getElementById('cumulative-min1').value);
+            const maxSize1 = parseFloat(document.getElementById('cumulative-max1').value);
+            const alertType1 = document.getElementById('cumulative-alert-type1').value;
+            const minSize2 = parseFloat(document.getElementById('cumulative-min2').value);
+            const maxSize2 = parseFloat(document.getElementById('cumulative-max2').value);
+            const alertType2 = document.getElementById('cumulative-alert-type2').value;
+            
+            tape.innerHTML = '';
+            
+            state.cumulativeTrades
+                .filter(t => (t.size >= minSize1 && t.size <= maxSize1) || (t.size >= minSize2 && t.size <= maxSize2))
+                .slice(0, 50)
+                .forEach(trade => {
+                    const row = document.createElement('div');
+                    row.className = `tape-row ${trade.isBuy ? 'buy-row' : 'sell-row'}`;
+                    
+                    // Apply highlighting based on alert type and size
+                    const shouldHighlight1 = (
+                        (alertType1 === 'bid' && !trade.isBuy && trade.size >= minSize1 && trade.size <= maxSize1) ||
+                        (alertType1 === 'ask' && trade.isBuy && trade.size >= minSize1 && trade.size <= maxSize1) ||
+                        (alertType1 === 'volume' && trade.size >= minSize1 && trade.size <= maxSize1)
+                    );
+                    
+                    const shouldHighlight2 = (
+                        (alertType2 === 'bid' && !trade.isBuy && trade.size >= minSize2 && trade.size <= maxSize2) ||
+                        (alertType2 === 'ask' && trade.isBuy && trade.size >= minSize2 && trade.size <= maxSize2) ||
+                        (alertType2 === 'volume' && trade.size >= minSize2 && trade.size <= maxSize2)
+                    );
+                    
+                    if (shouldHighlight1 || shouldHighlight2) {
+                        row.style.backgroundColor = (alertType1 === 'volume' || alertType2 === 'volume') ? 
+                            'rgba(57, 255, 20, 0.3)' : 
+                            (trade.isBuy ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)');
+                    }
+                    
+                    row.innerHTML = `
+                        <span>${trade.size.toFixed(4)}</span>
+                        <span>${trade.time.toLocaleTimeString()}</span>
+                        <span>${trade.price.toFixed(2)}</span>
+                        <span>${trade.isBuy ? 'BUY' : 'SELL'}</span>
+                    `;
+                    
+                    tape.appendChild(row);
+                });
+        }
+
+        // Update market orders tape
+        function updateMarketOrdersTape() {
+            const tape = document.getElementById('market-orders-tape');
+            const minSize1 = parseFloat(document.getElementById('market-min1').value);
+            const maxSize1 = parseFloat(document.getElementById('market-max1').value);
+            const alertType1 = document.getElementById('market-alert-type1').value;
+            const minSize2 = parseFloat(document.getElementById('market-min2').value);
+            const maxSize2 = parseFloat(document.getElementById('market-max2').value);
+            const alertType2 = document.getElementById('market-alert-type2').value;
+            
+            tape.innerHTML = '';
+            
+            state.marketOrders
+                .filter(t => (t.size >= minSize1 && t.size <= maxSize1) || (t.size >= minSize2 && t.size <= maxSize2))
+                .slice(0, 50)
+                .forEach(trade => {
+                    const row = document.createElement('div');
+                    row.className = `tape-row ${trade.isBuy ? 'buy-row' : 'sell-row'}`;
+                    
+                    // Apply highlighting based on alert type
+                    const shouldHighlight1 = (
+                        (alertType1 === 'bid' && !trade.isBuy && trade.size >= minSize1 && trade.size <= maxSize1) ||
+                        (alertType1 === 'ask' && trade.isBuy && trade.size >= minSize1 && trade.size <= maxSize1) ||
+                        (alertType1 === 'volume' && trade.size >= minSize1 && trade.size <= maxSize1)
+                    );
+                    
+                    const shouldHighlight2 = (
+                        (alertType2 === 'bid' && !trade.isBuy && trade.size >= minSize2 && trade.size <= maxSize2) ||
+                        (alertType2 === 'ask' && trade.isBuy && trade.size >= minSize2 && trade.size <= maxSize2) ||
+                        (alertType2 === 'volume' && trade.size >= minSize2 && trade.size <= maxSize2)
+                    );
+                    
+                    if (shouldHighlight1 || shouldHighlight2) {
+                        row.style.backgroundColor = (alertType1 === 'volume' || alertType2 === 'volume') ? 
+                            'rgba(128, 0, 128, 0.5)' : 
+                            (trade.isBuy ? 'rgba(0, 150, 255, 0.3)' : 'rgba(255, 0, 0, 0.3)');
+                    }
+                    
+                    row.innerHTML = `
+                        <span>${trade.size.toFixed(4)}</span>
+                        <span>${trade.time.toLocaleTimeString()}</span>
+                        <span>${trade.price.toFixed(2)}</span>
+                        <span>${trade.isBuy ? 'BUY' : 'SELL'}</span>
+                    `;
+                    
+                    tape.appendChild(row);
+                });
+        }
+
+        // Update DPeg tape
+        function updateDpegTape() {
+            const tape = document.getElementById('dpeg-tape');
+            tape.innerHTML = '';
+            
+            state.dpegOrders.slice(0, 75).forEach(trade => {
+                const row = document.createElement('div');
+                row.className = `tape-row ${trade.isBuy ? 'buy-row' : 'sell-row'}`;
+                
+                const timeStr = trade.time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                
+                row.innerHTML = `
+                    <span>[${timeStr}]</span>
+                    <span>${trade.isBuy ? 'BUY' : 'SELL'} ${trade.size.toFixed(5)} BTC @ ${trade.price.toFixed(2)}</span>
+                    <span>(Slippage: ${trade.slippage.toFixed(2)}%)</span>
+                `;
+                
+                tape.appendChild(row);
+            });
+        }
+
+        // Update large orders tape
+        function updateLargeOrdersTape() {
+            const tape = document.getElementById('large-orders-tape');
+            const volumeAlert1 = parseFloat(document.getElementById('large-volume-alert1').value);
+            const volumeAlert2 = parseFloat(document.getElementById('large-volume-alert2').value);
+            
+            tape.innerHTML = '';
+            
+            state.largeOrders.slice(0, 50).forEach(trade => {
+                const row = document.createElement('div');
+                row.className = `tape-row ${trade.isBuy ? 'large-buy-row' : 'large-sell-row'}`;
+                
+                // Apply volume alert highlighting
+                if (volumeAlert1 > 0 && trade.size >= volumeAlert1) {
+                    row.classList.add('gold-alert');
+                }
+                
+                if (volumeAlert2 > 0 && trade.size >= volumeAlert2) {
+                    row.classList.add('light-blue-alert');
+                }
+                
+                row.innerHTML = `
+                    <span>${trade.size.toFixed(2)}</span>
+                    <span>${trade.time.toLocaleTimeString()}</span>
+                    <span>${trade.price.toFixed(2)}</span>
+                    <span>${trade.isBuy ? 'BUY' : 'SELL'}</span>
+                `;
+                
+                tape.appendChild(row);
+            });
+        }
+
+        // Update info panel
+        function updateInfoPanel() {
+            // Update slippage indicators
+            document.getElementById('bid-slippage').textContent = `Selling: ${state.slippage.bid.toFixed(2)}%`;
+            document.getElementById('ask-slippage').textContent = `Buying: ${state.slippage.ask.toFixed(2)}%`;
+            
+            // Update 15m buys and sells
+            document.getElementById('buys-15m').textContent = state.volume.buys15m.btc.toFixed(4);
+            document.getElementById('buys-15m-usd').textContent = `$${formatCurrency(state.volume.buys15m.usd)}`;
+            document.getElementById('sells-15m').textContent = state.volume.sells15m.btc.toFixed(4);
+            document.getElementById('sells-15m-usd').textContent = `$${formatCurrency(state.volume.sells15m.usd)}`;
+            
+            // Update DPeg CVD
+            document.getElementById('dpeg-cvd').textContent = state.volume.dpegCvd.btc.toFixed(5);
+            document.getElementById('dpeg-cvd-usd').textContent = `$${formatCurrency(state.volume.dpegCvd.usd)}`;
+            document.getElementById('dpeg-cvd').className = state.volume.dpegCvd.delta >= 0 ? 'positive-value' : 'negative-value';
+            document.getElementById('dpeg-cvd-usd').className = state.volume.dpegCvd.delta >= 0 ? 'positive-value' : 'negative-value';
+            
+            // Update POC, VAL, VAH
+            document.getElementById('poc').textContent = `$${state.vwap.intraday.poc.toFixed(2)}`;
+            document.getElementById('val').textContent = `$${state.vwap.intraday.val.toFixed(2)}`;
+            document.getElementById('vah').textContent = `$${state.vwap.intraday.vah.toFixed(2)}`;
+            
+            // Update CVDs
+            document.getElementById('cvd-15m').textContent = state.volume.cvd15m >= 0 ? 
+                `$${formatCurrency(state.volume.cvd15m)}` : `$(${formatCurrency(Math.abs(state.volume.cvd15m))})`;
+            document.getElementById('cvd-4h').textContent = state.volume.cvd4h >= 0 ? 
+                `$${formatCurrency(state.volume.cvd4h)}` : `$(${formatCurrency(Math.abs(state.volume.cvd4h))})`;
+            
+            // Update VWAPs
+            document.getElementById('intraday-vwap').textContent = `$${state.vwap.intraday.price.toFixed(2)}`;
+            document.getElementById('daily-vwap').textContent = `$${state.vwap.daily.price.toFixed(2)}`;
+            
+            // Update timers
+            document.getElementById('bar-close-15m').textContent = formatTime(state.timers.barClose15m);
+            document.getElementById('bar-close-4h').textContent = formatTime(state.timers.barClose4h);
+            
+            // Update time and next analysis
+            document.getElementById('utc-time').textContent = new Date().toLocaleTimeString();
+            document.getElementById('next-analysis').textContent = formatTime(state.timers.nextAnalysis);
+        }
+
+        // Update slippage indicators
+        function updateSlippageIndicators() {
+            document.getElementById('bid-slippage').textContent = `Selling: ${state.slippage.bid.toFixed(2)}%`;
+            document.getElementById('ask-slippage').textContent = `Buying: ${state.slippage.ask.toFixed(2)}%`;
+        }
+
+        // Rotate market updates
+        function rotateMarketUpdates() {
+            const updateBoard = document.getElementById('market-updates');
+            const randomUpdate = state.marketUpdates[Math.floor(Math.random() * state.marketUpdates.length)];
+            updateBoard.textContent = randomUpdate;
+        }
+
+        // Start DPeg analysis
+        function startDpegAnalysis() {
+            state.dpegAnalysis = {
+                active: true,
+                buyCount: 0,
+                sellCount: 0,
+                maxBuySlippage: 0,
+                maxSellSlippage: 0,
+                lastAnalysisTime: Date.now()
+            };
+            
+            state.volume.dpegCvd = { btc: 0, usd: 0, delta: 0 };
+            state.dpegOrders = [];
+            
+            document.getElementById('start-dpeg').textContent = 'CVD Running';
+            document.getElementById('start-dpeg').style.backgroundColor = 'rgba(0, 255, 0, 0.2)';
+            
+            updateInfoPanel();
+        }
+
+        // Update DPeg CVD
+        function updateDpegCvd(trade) {
+            state.volume.dpegCvd.btc += trade.isBuy ? trade.size : -trade.size;
+            state.volume.dpegCvd.usd += trade.isBuy ? trade.value : -trade.value;
+            state.volume.dpegCvd.delta = state.volume.dpegCvd.btc;
+            
+            updateInfoPanel();
+        }
+
+        // Reset DPeg CVD
+        function resetDpegCvd() {
+            state.volume.dpegCvd = { btc: 0, usd: 0, delta: 0 };
+            state.dpegAnalysis = {
+                active: false,
+                buyCount: 0,
+                sellCount: 0,
+                maxBuySlippage: 0,
+                maxSellSlippage: 0,
+                lastAnalysisTime: 0
+            };
+            
+            document.getElementById('start-dpeg').textContent = 'Start CVD';
+            document.getElementById('start-dpeg').style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
+            
+            updateInfoPanel();
+        }
+
+        // Update volume metrics
+        function updateVolumeMetrics(trade) {
+            // Track last trade direction
+            state.lastTradeWasBuy = trade.isBuy;
+            
+            // 15m volume
+            const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+            
+            if (trade.time >= fifteenMinutesAgo) {
+                if (trade.isBuy) {
+                    state.volume.buys15m.btc += trade.size;
+                    state.volume.buys15m.usd += trade.value;
+                } else {
+                    state.volume.sells15m.btc += trade.size;
+                    state.volume.sells15m.usd += trade.value;
+                }
+                
+                state.volume.cvd15m += trade.isBuy ? trade.value : -trade.value;
+            }
+            
+            // 4h CVD
+            const fourHoursAgo = Date.now() - 4 * 60 * 60 * 1000;
+            if (trade.time >= fourHoursAgo) {
+                state.volume.cvd4h += trade.isBuy ? trade.value : -trade.value;
+            }
+        }
+
+        // Start timers
+        function startTimers() {
+            setInterval(() => {
+                // Update analysis timer
+                state.timers.nextAnalysis--;
+                if (state.timers.nextAnalysis <= 0) {
+                    state.timers.nextAnalysis = 300; // 5 minutes
+                    generateAnalysisReport();
+                    
+                    // Update DPeg analysis if active
+                    if (state.dpegAnalysis.active) {
+                        state.dpegAnalysis.lastAnalysisTime = Date.now();
+                    }
+                }
+                
+                // Update bar close timers
+                state.timers.barClose15m--;
+                if (state.timers.barClose15m <= 0) {
+                    state.timers.barClose15m = 900; // 15 minutes
+                    reset15mMetrics();
+                }
+                
+                state.timers.barClose4h--;
+                if (state.timers.barClose4h <= 0) {
+                    state.timers.barClose4h = 14400; // 4 hours
+                    reset4hMetrics();
+                    
+                    // Reset DPeg analysis if active
+                    if (state.dpegAnalysis.active) {
+                        state.dpegAnalysis.buyCount = 0;
+                        state.dpegAnalysis.sellCount = 0;
+                        state.dpegAnalysis.maxBuySlippage = 0;
+                        state.dpegAnalysis.maxSellSlippage = 0;
+                        state.dpegAnalysis.lastAnalysisTime = Date.now();
+                    }
+                }
+                
+                updateInfoPanel();
+            }, 1000);
+        }
+
+        // Reset 15m metrics
+        function reset15mMetrics() {
+            state.volume.buys15m = { btc: 0, usd: 0 };
+            state.volume.sells15m = { btc: 0, usd: 0 };
+            state.volume.cvd15m = 0;
+        }
+
+        // Reset 4h metrics
+        function reset4hMetrics() {
+            state.volume.cvd4h = 0;
+        }
+
+        // Generate analysis report
+        function generateAnalysisReport() {
+            // Generate 5-minute report
+            const report5m = createAnalysisReport('5m');
+            
+            // Generate daily report at specific times (8am, 4pm, 12am UTC-5)
+            const now = new Date();
+            const hours = now.getUTCHours() - 5; // UTC-5
+            if (hours % 8 === 0) { // Every 8 hours
+                const dailyReport = createAnalysisReport('daily');
+                showReportPopup(dailyReport);
+            }
+        }
+
+        // Create analysis report
+        function createAnalysisReport(type) {
+            // This would generate a comprehensive report
+            // Simplified for this example
+            return {
+                title: `${type === '5m' ? '5-Minute' : 'Daily'} Market Analysis`,
+                content: [
+                    `Current Price: $${state.lastPrice.toFixed(2)}`,
+                    `DPeg CVD: ${state.volume.dpegCvd.btc.toFixed(5)} BTC ($${formatCurrency(state.volume.dpegCvd.usd)})`,
+                    `15m Volume: ${(state.volume.buys15m.btc + state.volume.sells15m.btc).toFixed(4)} BTC`,
+                    `VWAP: $${state.vwap.intraday.price.toFixed(2)}`,
+                    `Volatility: ${state.volatility.toFixed(2)}%`,
+                    `DPeg Activity: ${state.dpegAnalysis.buyCount} buys / ${state.dpegAnalysis.sellCount} sells`,
+                    `Max Buy Slippage: ${state.dpegAnalysis.maxBuySlippage.toFixed(2)}%`,
+                    `Max Sell Slippage: ${state.dpegAnalysis.maxSellSlippage.toFixed(2)}%`
+                ]
+            };
+        }
+
+        // Show report popup
+        function showReportPopup(report) {
+            // In a real implementation, this would show a modal/popup
+            console.log('Report:', report.title);
+            report.content.forEach(line => console.log(line));
+            
+            // Update market update board with report summary
+            document.getElementById('market-updates').textContent = 
+                `${report.title}: ${report.content[0]}, ${report.content[2]}`;
+        }
+
+        // Format time (seconds to MM:SS)
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Format currency with commas
+        function formatCurrency(amount) {
+            return amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        }
+
+        // Fetch initial data
+        function fetchInitialData() {
+            // Fetch recent trades
+            fetch('https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=100')
+                .then(res => res.json())
+                .then(trades => {
+                    trades.reverse().forEach(trade => {
+                        const tradeObj = {
+                            e: "trade",
+                            E: trade.time,
+                            s: "BTCUSDT",
+                            t: trade.id,
+                            p: trade.price,
+                            q: trade.qty,
+                            T: trade.time,
+                            m: trade.isBuyerMaker,
+                            M: true
+                        };
+                        sendToTapes(tradeObj);
+                        processTrade(tradeObj);
+                    });
+                });
+            
+            // Fetch recent aggregated trades
+            fetch('https://api.binance.com/api/v3/aggTrades?symbol=BTCUSDT&limit=100')
+                .then(res => res.json())
+                .then(aggTrades => {
+                    aggTrades.reverse().forEach(aggTrade => {
+                        processAggTrade({
+                            e: "aggTrade",
+                            E: aggTrade.time,
+                            s: "BTCUSDT",
+                            a: aggTrade.aggTradeId,
+                            p: aggTrade.price,
+                            q: aggTrade.qty,
+                            f: aggTrade.firstTradeId,
+                            l: aggTrade.lastTradeId,
+                            T: aggTrade.time,
+                            m: aggTrade.isBuyerMaker,
+                            M: true
+                        });
+                    });
+                });
+            
+            // Fetch initial order book
+            fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=20')
+                .then(res => res.json())
+                .then(data => {
+                    state.orderBook.bids = data.bids.map(b => ({ 
+                        price: parseFloat(b[0]), 
+                        amount: parseFloat(b[1]) 
+                    })).sort((a, b) => b.price - a.price);
+                    
+                    state.orderBook.asks = data.asks.map(a => ({ 
+                        price: parseFloat(a[0]), 
+                        amount: parseFloat(a[1]) 
+                    })).sort((a, b) => a.price - b.price);
+                });
+            
+            // Initialize VWAP values (simplified)
+            state.vwap.intraday = {
+                price: state.lastPrice || 50000,
+                poc: (state.lastPrice || 50000) * 0.993,
+                val: (state.lastPrice || 50000) * 0.990,
+                vah: (state.lastPrice || 50000) * 1.005
+            };
+            
+            state.vwap.daily = {
+                price: (state.lastPrice || 50000) * 0.998,
+                poc: (state.lastPrice || 50000) * 0.995,
+                val: (state.lastPrice || 50000) * 0.992,
+                vah: (state.lastPrice || 50000) * 1.008
+            };
+            
+            // Initialize volatility
+            state.volatility = 8.5 + Math.random() * 3; // 8.5-11.5%
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+
+
+</body></html>
